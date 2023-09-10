@@ -157,23 +157,17 @@ class PhoneBook:
         организацию, рабочий и личный телефон. Если пользователь не вводит новое значение, используется текущее
         значение из контакта.
         """
-        new_first_name: str = input(f'Имя (по умолчанию: {contact.first_name}): ').strip() or contact.first_name
-        new_last_name: str = input(f'Фамилия (по умолчанию: {contact.last_name}): ').strip() or contact.last_name
-        new_middle_name: str = input(f'Отчество (по умолчанию: {contact.middle_name}): ').strip() or contact.middle_name
-        new_organization: str = input(
-            f'Организация (по умолчанию: {contact.organization}): ').strip() or contact.organization
-        new_work_phone: str = input(
-            f'Рабочий телефон (по умолчанию: {contact.work_phone}): ').strip() or contact.work_phone
-        new_personal_phone: str = input(
-            f'Личный телефон (по умолчанию: {contact.personal_phone}): ').strip() or contact.personal_phone
 
         return {
-            'first_name': new_first_name,
-            'last_name': new_last_name,
-            'middle_name': new_middle_name,
-            'organization': new_organization,
-            'work_phone': new_work_phone,
-            'personal_phone': new_personal_phone
+            'first_name': input(f'Имя (по умолчанию: {contact.first_name}): ').strip() or contact.first_name,
+            'last_name': input(f'Фамилия (по умолчанию: {contact.last_name}): ').strip() or contact.last_name,
+            'middle_name': input(f'Отчество (по умолчанию: {contact.middle_name}): ').strip() or contact.middle_name,
+            'organization': input(
+                f'Организация (по умолчанию: {contact.organization}): ').strip() or contact.organization,
+            'work_phone': input(
+                f'Рабочий телефон (по умолчанию: {contact.work_phone}): ').strip() or contact.work_phone,
+            'personal_phone': input(
+                f'Личный телефон (по умолчанию: {contact.personal_phone}): ').strip() or contact.personal_phone
         }
 
     def edit_contact(self) -> None:
@@ -325,7 +319,7 @@ def main() -> None:
     """
     Основная функция для запуска консольной программы управления контактами.
     """
-    contacts: PhoneBook = PhoneBook('contacts1.json')
+    contacts: PhoneBook = PhoneBook('contacts.json')
 
     while True:
         print('\nЗаписная книжка:')
