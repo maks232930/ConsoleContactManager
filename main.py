@@ -39,6 +39,9 @@ class PhoneBook:
             return max(contact.id for contact in self._entries) + 1
         return 1
 
+    def _print_tabulate(self, table_data: list) -> None:
+        print(tabulate(table_data, headers=self._TABLE_HEADERS, tablefmt='fancy_grid'))
+
     def _validate_contact(self, contact: dict) -> bool:
         """
         Проверяет валидность данных контакта.
@@ -61,11 +64,11 @@ class PhoneBook:
         """
         self._entries.sort(key=lambda contact: contact.id)
 
-    def _save_contact(self) -> None:
+    def save_contact(self) -> None:
         """
-        Сохраняет список контактов в файл 'contacts.json'.
+        Сохраняет список контактов в файл 'self.filename'.
 
-        Преобразует список контактов в формат JSON и записывает его в файл 'contacts.json'.
+        Преобразует список контактов в формат JSON и записывает его в файл из 'self.filename'.
         """
         with open(self._filename, 'w') as file:
             contacts_json: list[dict] = [item.model_dump() for item in self._entries]
@@ -81,7 +84,7 @@ class PhoneBook:
         """
         result_data: list[dict] = []
         invalid_data: list[dict] = []
-        processed_ids: list = []
+        processed_ids: list[int] = []
 
         for contact in json_data:
             valid: bool = True
@@ -102,7 +105,7 @@ class PhoneBook:
                     invalid_data.append(contact)
 
         if invalid_data:
-            max_id = max(item['id'] for item in invalid_data)
+            max_id: int = max(processed_ids)
             for index, contact in enumerate(invalid_data, start=1):
                 contact['id'] = int(max_id + index)
                 result_data.append(contact)
@@ -121,6 +124,27 @@ class PhoneBook:
                 contacts_json: list[dict] = json.load(json_file)
             result_contacts: list[dict] = self._validate_contacts(contacts_json)
             self._entries.extend([ContactModel(**contact) for contact in result_contacts])
+
+    def remove_contact(self) -> None:
+        """
+        Удаляет контакт из записной книжки по его ID.
+
+        Запрашивает у пользователя ввод ID контакта, который нужно удалить. Если контакт с указанным ID существует,
+        удаляет его из записной книжки и сохраняет изменения. Если контакт не найден или введен неверный формат ID,
+        выводит соответствующие сообщения.
+
+        """
+        contact_id: str = input('Введите id: ').strip()
+        if contact_id.isdigit():
+            contact = self._get_contact_by_id(int(contact_id))
+            if contact:
+                self._entries.remove(contact)
+                self.save_contact()
+                print('Контакт успешно удален')
+            else:
+                print('Такого контакта нет')
+        else:
+            print('Неверный формат')
 
     def add_contact(self) -> None:
         """
@@ -142,7 +166,7 @@ class PhoneBook:
 
         if self._validate_contact(contact_data):
             self._entries.append(ContactModel(**contact_data))
-            self._save_contact()
+            self.save_contact()
             self._next_id += 1
             print('\nКонтакт успешно добавлен')
         else:
@@ -170,6 +194,14 @@ class PhoneBook:
                 f'Личный телефон (по умолчанию: {contact.personal_phone}): ').strip() or contact.personal_phone
         }
 
+    def _get_contact_by_id(self, contact_id: int) -> ContactModel | None:
+        """
+        Возвращает контакт по его ID.
+        """
+        for contact in self._entries:
+            if contact.id == contact_id:
+                return contact
+
     def edit_contact(self) -> None:
         """
         Позволяет пользователю изменить информацию о существующем контакте.
@@ -178,23 +210,23 @@ class PhoneBook:
         изменения. После внесения изменений, обновляет информацию о контакте и сохраняет изменения.
         """
         while True:
-            contact_id: int | str = input('Введите номер контакта, или "q" для выхода: ')
+            contact_id: str = input('Введите номер контакта, или "q" для выхода: ')
             if contact_id.lower() == 'q':
                 break
             elif contact_id.isdigit():
-                for contact in self._entries:
-                    if contact.id == int(contact_id):
-                        print(
-                            tabulate([contact.model_dump_table()], headers=self._TABLE_HEADERS, tablefmt='fancy_grid'))
-                        updated_contact: ContactModel = contact.model_copy(
-                            update=self._get_contact_data(contact)
-                        )
-                        self._entries.remove(contact)
-                        self._entries.append(updated_contact)
-                        self._sort_contacts()
-                        self._save_contact()
-                        print('\nКонтакт успешно изменен')
-                        break
+                contact = self._get_contact_by_id(int(contact_id))
+                if contact:
+                    self._print_tabulate([contact.model_dump_table()])
+
+                    updated_contact: ContactModel = contact.model_copy(
+                        update=self._get_contact_data(contact)
+                    )
+                    self._entries.remove(contact)
+                    self._entries.append(updated_contact)
+                    self._sort_contacts()
+                    self.save_contact()
+                    print('\nКонтакт успешно изменен')
+                    break
                 else:
                     print('\nТакого контакта нет')
                     break
@@ -269,7 +301,7 @@ class PhoneBook:
                     if match:
                         table_data.append(contact.model_dump_table())
                 if table_data:
-                    print(tabulate(table_data, headers=self._TABLE_HEADERS, tablefmt='fancy_grid'))
+                    self._print_tabulate(table_data)
                     break
                 else:
                     print('\nСовпадение не найдено')
@@ -279,7 +311,7 @@ class PhoneBook:
                 print('Таких полей нет')
                 continue
 
-    def show_display_contacts(self, page_size: int = 2) -> None:
+    def show_display_contacts(self, page_size: int = 10) -> None:
         """
         Отображает список контактов в виде таблицы на нескольких страницах.
 
@@ -301,15 +333,25 @@ class PhoneBook:
                 for index, contact in enumerate(self._entries[start_index:end_index], start=start_index):
                     table_data.append(contact.model_dump_table())
 
-                print(tabulate(table_data, headers=self._TABLE_HEADERS, tablefmt='fancy_grid'))
+                self._print_tabulate(table_data)
+                print(
+                    "Для перехода на следующую страницу, нажмите 'n'. Для перехода на предыдущую страницу, нажмите 'b'. Для выхода, нажмите 'q'. Чтобы перейти на конкретную страницу, укажите её номер.")
+
                 user_input: str = input(
-                    "\nНажмите 'n' для перехода на следующую страницу, 'b' для перехода на преведущую страницу, 'q' для выхода: ")
+                    "\nВведите: ")
                 if user_input.lower() == 'q':
                     break
                 elif user_input.lower() == 'n':
                     page = (page % total_pages) + 1
                 elif user_input.lower() == 'b':
                     page = (page - 2) % total_pages + 1
+                elif user_input.isdigit():
+                    if 1 <= int(user_input) <= total_pages:
+                        page = int(user_input)
+                    else:
+                        print('Такой страницы нет!')
+                else:
+                    print("Неправильный формат!")
             except ZeroDivisionError:
                 print('У вас одна страница')
                 continue
@@ -327,11 +369,12 @@ def main() -> None:
         print('2. Добавить контакт')
         print('3. Изменить контакт')
         print('4. Поиск контактов')
-        print('5. Выход')
+        print('5. Удалить контакт')
+        print('6. Выход')
         choice: str = input('Введите цифру: ')
 
         if choice == '1':
-            contacts.show_display_contacts(page_size=10)
+            contacts.show_display_contacts()
         elif choice == '2':
             contacts.add_contact()
         elif choice == '3':
@@ -339,6 +382,9 @@ def main() -> None:
         elif choice == '4':
             contacts.search_contact()
         elif choice == '5':
+            contacts.remove_contact()
+        elif choice == '6':
+            contacts.save_contact()
             break
 
 
